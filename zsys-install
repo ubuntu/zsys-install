@@ -50,5 +50,7 @@ cp $ZSYS_INSTALL_DIR/$USERS_SCRIPT /target/
 chroot /target /$USERS_SCRIPT
 rm /target/$USERS_SCRIPT
 
+sed -e 's/GRUB_DISABLE_OS_PROBER/^#&  # Disabled by zsys-install/' /target/etc/grub.d/50-curtin-settings.cfg
+
 zfs umount -a
 zpool export rpool
