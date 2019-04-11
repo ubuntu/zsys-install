@@ -1,4 +1,4 @@
-zsys-install (0.7) UNRELEASED; urgency=medium
+zsys-install (0.7) disco; urgency=medium
 
   * Rename to zsys-install
   * zsys-install:
