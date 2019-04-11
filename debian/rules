@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+#export DH_VERBOSE = 1
+
+ZSYS_INSTALL_DIR:=debian/zsys-install/usr/share/zsys-install
+BIN_DIR:=debian/zsys-install/usr/sbin
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	mkdir -p $(ZSYS_INSTALL_DIR) $(BIN_DIR)
+	cp zsys-createusers $(ZSYS_INSTALL_DIR)/
+	cp curtin-zfs.yaml $(ZSYS_INSTALL_DIR)/
+	cp zsys-install $(BIN_DIR)/
+	dh_auto_install

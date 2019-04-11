@@ -1,0 +1,15 @@
+Source: zsys-install
+Section: gnome
+Priority: optional
+Maintainer: Ubuntu Developers <ubuntu-devel-discuss@lists.ubuntu.com>
+Build-Depends: debhelper (>= 11)
+Standards-Version: 4.1.3
+
+Package: zsys-install
+Architecture: all
+Depends: zfsutils-linux,
+         curtin,
+         ${misc:Depends},
+Description: Zfs experiment on ubuntu system
+ This is an experimental package to test ZFS support in ubuntu and make
+ a quick and easy installing via Curtin.

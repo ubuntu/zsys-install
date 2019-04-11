@@ -1,0 +1,51 @@
+zsys-install (0.7) UNRELEASED; urgency=medium
+
+  * Rename to zsys-install
+  * zsys-install:
+    - add cli options and help
+
+ -- Didier Roche <didrocks@ubuntu.com>  Thu, 11 Apr 2019 11:16:16 +0200
+
+zfs-install (0.6) disco; urgency=medium
+
+  * Add EFI yaml configuration
+
+ -- Didier Roche <didrocks@ubuntu.com>  Wed, 10 Apr 2019 18:26:55 +0200
+
+zfs-install (0.5) disco; urgency=medium
+
+  * Workaround curtin issue transforming "yes"/"no" to "on"/"off".
+  * Export zpool at the end of installation.
+
+ -- Didier Roche <didrocks@ubuntu.com>  Wed, 10 Apr 2019 17:11:13 +0200
+
+zfs-install (0.4) disco; urgency=medium
+
+  * Ensure users datasets have _uuid and not -uuid
+
+ -- Didier Roche <didrocks@ubuntu.com>  Wed, 10 Apr 2019 12:35:38 +0200
+
+zfs-install (0.3) disco; urgency=medium
+
+  * change zfs layout:
+    - merged SYSTEM and ROOT datasets
+    - added annotation to datasets needed on boot
+    - added /usr/local
+    - renamed ubuntu-1234 to ubuntu_1234
+  * Modify zfs-install accordingly.
+
+ -- Didier Roche <didrocks@ubuntu.com>  Tue, 09 Apr 2019 17:08:36 +0200
+
+zfs-install (0.2) disco; urgency=medium
+
+  * Fix zfs-install script
+  * Allow non root execution
+  * Add default grub timeout to curtin
+
+ -- Didier Roche <didrocks@ubuntu.com>  Mon, 08 Apr 2019 15:13:17 +0200
+
+zfs-install (0.1) disco; urgency=medium
+
+  * Initial release
+
+ -- Jean-Baptiste Lallement <jean-baptiste.lallement@ubuntu.com>  Fri, 05 Apr 2019 15:47:56 +0200
