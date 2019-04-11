@@ -1,0 +1,20 @@
+#!/bin/sh
+
+set -eu
+
+USERS="user1 user2"
+
+for user in $USERS; do
+    useradd  -M $user||true
+    rsync -a /etc/skel/ /home/$user/
+    for group in adm cdrom sudo dip plugdev lpadmin sambashare; do
+        adduser $user $group||true
+    done
+
+    usermod --home /home/$user/ $user || true
+    adduser $user $user || true
+    chown -R $user:$user /home/$user/ || true
+    chsh -s /bin/bash $user || true
+
+    echo "$user:u"|chpasswd
+done

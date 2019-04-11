@@ -1,0 +1,259 @@
+# sudo curtin --config=curtin-zfs.yaml install
+showtrace: true
+storage:
+    version: 1
+    config:
+        #
+        # single disk
+        #
+        -   id: disk1
+            type: disk
+            ptable: gpt
+            path: /dev/vda
+            wipe: superblock
+            grub_device: true
+        #
+        # partition for filesystem
+        #
+        -   id: disk1p1
+            type: partition
+            number: 1
+            size: 16G
+            device: disk1
+        #
+        # we're using GPT and not EFI, so we need biosboot partition
+        #
+        -   id: bios_boot
+            type: partition
+            size: 1M
+            number: 2
+            device: disk1
+            flag: bios_grub # this flag will sgdisk -t2:EF02
+        #
+        # make a zpool with our disk
+        #
+        # zpool create -o ashift=12 \
+        #              -O atime=off -O canmount=off -O compression=lz4 \
+        #              -O normalization=formD -O mountpoint=/ -R /TARGET_MOUNTPOINT \
+        #              rpool /dev/disk/by-id/virtio-abcdefghi123
+        -   type: zpool
+            id: disk1_rpool
+            pool: rpool
+            vdevs:
+              - disk1p1
+            mountpoint: /
+            pool_properties:
+                ashift: 12      # (or more, based on /sys)
+            fs_properties:
+                acltype: posixacl
+                relatime: on
+                canmount: off
+                compression: lz4
+                devices: off
+                #normalization: formD  # Disabled for the time being until boot is stable
+                xattr: sa
+
+        ########################
+        # Create ROOT datasets #
+        ########################
+
+        # zfs create rpool/ROOT -o canmount=off -o mountpoint=none
+        -   type: zfs
+            id: disk1_rpool_root
+            pool: disk1_rpool
+            volume: /ROOT   # (rpool/ROOT)
+            properties:
+                canmount: off
+                mountpoint: none
+
+        # zfs create rpool/ROOT/ubuntu-${UUID_ORIG}      -o mountpoint=/
+        -   type: zfs
+            id: disk1_rpool_root_ubuntu_1234
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_1234
+            properties:
+                mountpoint: /
+                org.zsys:bootfs: 'yes'
+
+        # zfs create rpool/ROOT/ubuntu-${UUID_ORIG}/opt     -o mountpoint=/opt
+        -   type: zfs
+            id: disk1_rpool_root_ubuntu_1234-opt
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_1234/opt
+            properties:
+                mountpoint: /opt
+                org.zsys:bootfs: 'yes'
+
+        # WORKAROUND:
+        ##############################
+        # Create persistent datasets #
+        ##############################
+
+        # zfs create rpool/srv
+        -   type: zfs
+            id: disk1_rpool_srv
+            pool: disk1_rpool
+            volume: /srv
+
+        # zfs create rpool/usr
+        -   type: zfs
+            id: disk1_rpool_usr
+            pool: disk1_rpool
+            volume: /usr
+            properties:
+                canmount: off
+
+        # zfs create rpool/usr/local
+        -   type: zfs
+            id: disk1_rpool_usr_local
+            pool: disk1_rpool
+            volume: /usr/local
+
+        # zfs create rpool/var                     -o canmount=off
+        -   type: zfs
+            id: disk1_rpool_var
+            pool: disk1_rpool
+            volume: /var
+            properties:
+                canmount: off
+
+        # zfs create rpool/var/games
+        -   type: zfs
+            id: disk1_rpool_var_games
+            pool: disk1_rpool
+            volume: /var/games
+
+        # zfs create rpool/var/lib
+        -   type: zfs
+            id: disk1_rpool_var_lib
+            pool: disk1_rpool
+            volume: /var/lib
+
+        # zfs create rpool/var/log
+        -   type: zfs
+            id: disk1_rpool_var_log
+            pool: disk1_rpool
+            volume: /var/log
+
+        # zfs create rpool/var/mail
+        -   type: zfs
+            id: disk1_rpool_var_mail
+            pool: disk1_rpool
+            volume: /var/mail
+
+        # zfs create rpool/var/snap
+        -   type: zfs
+            id: disk1_rpool_var_snap
+            pool: disk1_rpool
+            volume: /var/snap
+
+        # zfs create rpool/var/spool
+        -   type: zfs
+            id: disk1_rpool_var_spool
+            pool: disk1_rpool
+            volume: /var/spool
+
+        # zfs create rpool/var/www
+        -   type: zfs
+            id: disk1_rpool_var_www
+            pool: disk1_rpool
+            volume: /var/www
+
+
+        ###############################################################
+        # Create system datasets that can overlay persistent datasets #
+        ###############################################################
+
+        # zfs create rpool/ROOT/ubuntu_1234/var                     -o canmount=off
+        -   type: zfs
+            id: disk1_rpool_system_ubuntu_1234_var
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_1234/var
+            properties:
+                canmount: off
+                org.zsys:bootfs: 'no'
+
+        # zfs create rpool/ROOT/ubuntu_1234/var/lib                     -o canmount=off
+        -   type: zfs
+            id: disk1_rpool_system_ubuntu_1234_var_lib
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_1234/var/lib
+            properties:
+                canmount: off
+
+        # zfs create rpool/ROOT/ubuntu_1234/var/lib/AccountServices
+        -   type: zfs
+            id: disk1_rpool_system_ubuntu_1234_var_lib_accountservices
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_1234/var/lib/AccountsService
+
+        # zfs create rpool/ROOT/ubuntu_1234/var/lib/apt
+        -   type: zfs
+            id: disk1_rpool_system_ubuntu_1234_var_lib_apt
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_1234/var/lib/apt
+
+        # zfs create rpool/ROOT/ubuntu_1234/var/lib/dpkg
+        -   type: zfs
+            id: disk1_rpool_system_ubuntu_1234_var_lib_dpkg
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_1234/var/lib/dpkg
+
+        # zfs create rpool/ROOT/ubuntu_1234/var/lib/NetworkManager
+        -   type: zfs
+            id: disk1_rpool_system_ubuntu_1234_var_lib_networkmanager
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_1234/var/lib/NetworkManager
+
+
+        ############################
+        # Create USERDATA datasets #
+        ############################
+
+        # zfs create rpool/USERDATA                     -o canmount=off -o mountpoint=/
+        -   type: zfs
+            id: disk1_rpool_USERDATA
+            pool: disk1_rpool
+            volume: /USERDATA
+            properties:
+                canmount: off
+                mountpoint: /
+
+        # zfs create rpool/USERDATA/home                     -o canmount=off
+        -   type: zfs
+            id: disk1_rpool_USERDATA_home
+            pool: disk1_rpool
+            volume: /USERDATA/home
+            properties:
+                canmount: off
+
+        # zfs create rpool/USERDATA/home/user1_01234               -o mountpoint=/home/user1
+        -   type: zfs
+            id: disk1_rpool_USERDATA_home_user1_01234
+            pool: disk1_rpool
+            volume: /USERDATA/home/user1_01234
+            properties:
+                mountpoint: /home/user1
+
+        # zfs create rpool/USERDATA/home/user2_02345               -o mountpoint=/home/user2
+        -   type: zfs
+            id: disk1_rpool_USERDATA_home_user2_02345
+            pool: disk1_rpool
+            volume: /USERDATA/home/user2_02345
+            properties:
+                mountpoint: /home/user2
+
+        # zfs create rpool/USERDATA/root_001234                    -o mountpoint=/root
+        -   type: zfs
+            id: disk1_rpool_USERDATA_root_001234
+            pool: disk1_rpool
+            volume: /USERDATA/root_001234
+            properties:
+                mountpoint: /root
+
+sources:
+    - fsimage-layered:///cdrom/casper/minimal.standard.desktop-fr.squashfs
+
+#late_commands:
+#    # Snapshot before first reboot
+#    99-cmd: ['zfs', 'snapshot', 'rpool/ROOT/ubuntu-1@factory']

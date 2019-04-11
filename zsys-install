@@ -1,0 +1,54 @@
+#!/bin/bash
+set -eu
+
+show_help() {
+	echo "Usage: $0 [-h] [-e] [-c <curtin_file>]
+
+    Install a zfs system managed by ubuntu.
+    By default, a bios_grub partition is created with GPT, corresponding to
+    a non UEFI system.
+
+    Options:
+      -h                show this help
+      -e                use default efi curtin file
+      -c <curtin_file>  specify your own curtin file to use
+
+    You can override the create_users script and default curtin file path
+    via \$ZSYS_INSTALL_DIR." >&2
+}
+
+if [ $(id -u) -ne 0 ]; then
+	sudo $0 $@
+	exit $?
+fi
+
+ZSYS_INSTALL_DIR=${ZSYS_INSTALL_DIR:-"/usr/share/zsys-install"}
+
+curtin_file=${ZSYS_INSTALL_DIR}/"curtin-zfs.yaml"
+while getopts "h?ec:" opt; do
+    case "$opt" in
+    h|\?)
+        show_help
+        exit 0
+        ;;
+    e)  curtin_file=${ZSYS_INSTALL_DIR}/"curtin-zfs-efi.yaml"
+	    ;;
+	c) curtin_file=$OPTARG
+    esac
+done
+
+sed -i 's#echo "GRUB_TERMINAL=console"#&\n        echo "GRUB_TIMEOUT=10"#' /usr/lib/curtin/helpers/common
+
+curtin -vv -c ${curtin_file} install
+
+USERS_SCRIPT=zsys-createusers
+
+zpool export rpool
+zpool import rpool -R /target
+
+cp $ZSYS_INSTALL_DIR/$USERS_SCRIPT /target/
+chroot /target /$USERS_SCRIPT
+rm /target/$USERS_SCRIPT
+
+zfs umount -a
+zpool export rpool
