@@ -13,12 +13,20 @@ storage:
             wipe: superblock
             grub_device: true
         #
-        # partition for filesystem
+        # partition for boot
         #
         -   id: disk1p1
             type: partition
             number: 1
-            size: 16G
+            size: 2G
+            device: disk1
+        #
+        # partition for filesystem
+        #
+        -   id: disk1p2
+            type: partition
+            number: 2
+            size: 14G
             device: disk1
         #
         # we're using GPT and not EFI, so we need biosboot partition
@@ -26,21 +34,38 @@ storage:
         -   id: bios_boot
             type: partition
             size: 1M
-            number: 2
+            number: 3
             device: disk1
             flag: bios_grub # this flag will sgdisk -t2:EF02
         #
-        # make a zpool with our disk
+        # make bpool and rpool with our disk
         #
         # zpool create -o ashift=12 \
         #              -O atime=off -O canmount=off -O compression=lz4 \
         #              -O normalization=formD -O mountpoint=/ -R /TARGET_MOUNTPOINT \
         #              rpool /dev/disk/by-id/virtio-abcdefghi123
         -   type: zpool
+            id: disk1_bpool
+            pool: bpool
+            vdevs:
+              - disk1p1
+            mountpoint: /
+            pool_properties:
+                ashift: 12      # (or more, based on /sys)
+            fs_properties:
+                acltype: posixacl
+                relatime: on
+                canmount: off
+                compression: lz4
+                devices: off
+                #normalization: formD  # Disabled for the time being until boot is stable
+                xattr: sa
+
+        -   type: zpool
             id: disk1_rpool
             pool: rpool
             vdevs:
-              - disk1p1
+              - disk1p2
             mountpoint: /
             pool_properties:
                 ashift: 12      # (or more, based on /sys)
@@ -68,21 +93,50 @@ storage:
 
         # zfs create rpool/ROOT/ubuntu-${UUID_ORIG}      -o mountpoint=/
         -   type: zfs
-            id: disk1_rpool_root_ubuntu_1234
+            id: disk1_rpool_root_ubuntu_123456
             pool: disk1_rpool
-            volume: /ROOT/ubuntu_1234
+            volume: /ROOT/ubuntu_123456
             properties:
                 mountpoint: /
                 org.zsys:bootfs: 'yes'
 
         # zfs create rpool/ROOT/ubuntu-${UUID_ORIG}/opt     -o mountpoint=/opt
         -   type: zfs
-            id: disk1_rpool_root_ubuntu_1234-opt
+            id: disk1_rpool_root_ubuntu_123456-opt
             pool: disk1_rpool
-            volume: /ROOT/ubuntu_1234/opt
+            volume: /ROOT/ubuntu_123456/opt
             properties:
                 mountpoint: /opt
                 org.zsys:bootfs: 'yes'
+
+        # zfs create rpool/ROOT/ubuntu_123456/var                     -o canmount=off
+        -   type: zfs
+            id: disk1_rpool_system_ubuntu_123456_var
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_123456/var
+            properties:
+                org.zsys:bootfs: 'no'
+
+        ########################
+        # Create BOOT datasets #
+        ########################
+
+        # zfs create bpool/ROOT -o canmount=off -o mountpoint=none
+        -   type: zfs
+            id: disk1_bpool_boot
+            pool: disk1_bpool
+            volume: /BOOT   # (bpool/BOOT)
+            properties:
+                canmount: off
+                mountpoint: none
+
+        # zfs create bpool/BOOT/ubuntu-${UUID_ORIG}      -o mountpoint=/boot
+        -   type: zfs
+            id: disk1_bpool_boot_ubuntu_123456
+            pool: disk1_bpool
+            volume: /BOOT/ubuntu_123456
+            properties:
+                mountpoint: /boot
 
         # WORKAROUND:
         ##############################
@@ -94,20 +148,6 @@ storage:
             id: disk1_rpool_srv
             pool: disk1_rpool
             volume: /srv
-
-        # zfs create rpool/usr
-        -   type: zfs
-            id: disk1_rpool_usr
-            pool: disk1_rpool
-            volume: /usr
-            properties:
-                canmount: off
-
-        # zfs create rpool/usr/local
-        -   type: zfs
-            id: disk1_rpool_usr_local
-            pool: disk1_rpool
-            volume: /usr/local
 
         # zfs create rpool/var                     -o canmount=off
         -   type: zfs
@@ -164,46 +204,43 @@ storage:
         # Create system datasets that can overlay persistent datasets #
         ###############################################################
 
-        # zfs create rpool/ROOT/ubuntu_1234/var                     -o canmount=off
+        # zfs create rpool/ROOT/ubuntu_123456/var/lib                     -o canmount=off
         -   type: zfs
-            id: disk1_rpool_system_ubuntu_1234_var
+            id: disk1_rpool_system_ubuntu_123456_var_lib
             pool: disk1_rpool
-            volume: /ROOT/ubuntu_1234/var
-            properties:
-                canmount: off
-                org.zsys:bootfs: 'no'
-
-        # zfs create rpool/ROOT/ubuntu_1234/var/lib                     -o canmount=off
-        -   type: zfs
-            id: disk1_rpool_system_ubuntu_1234_var_lib
-            pool: disk1_rpool
-            volume: /ROOT/ubuntu_1234/var/lib
+            volume: /ROOT/ubuntu_123456/var/lib
             properties:
                 canmount: off
 
-        # zfs create rpool/ROOT/ubuntu_1234/var/lib/AccountServices
+        # zfs create rpool/ROOT/ubuntu_123456/var/lib/AccountServices
         -   type: zfs
-            id: disk1_rpool_system_ubuntu_1234_var_lib_accountservices
+            id: disk1_rpool_system_ubuntu_123456_var_lib_accountservices
             pool: disk1_rpool
-            volume: /ROOT/ubuntu_1234/var/lib/AccountsService
+            volume: /ROOT/ubuntu_123456/var/lib/AccountsService
 
-        # zfs create rpool/ROOT/ubuntu_1234/var/lib/apt
+        # zfs create rpool/ROOT/ubuntu_123456/var/lib/apt
         -   type: zfs
-            id: disk1_rpool_system_ubuntu_1234_var_lib_apt
+            id: disk1_rpool_system_ubuntu_123456_var_lib_apt
             pool: disk1_rpool
-            volume: /ROOT/ubuntu_1234/var/lib/apt
+            volume: /ROOT/ubuntu_123456/var/lib/apt
 
-        # zfs create rpool/ROOT/ubuntu_1234/var/lib/dpkg
+        # zfs create rpool/ROOT/ubuntu_123456/var/lib/aptitude
         -   type: zfs
-            id: disk1_rpool_system_ubuntu_1234_var_lib_dpkg
+            id: disk1_rpool_system_ubuntu_123456_var_lib_aptitude
             pool: disk1_rpool
-            volume: /ROOT/ubuntu_1234/var/lib/dpkg
+            volume: /ROOT/ubuntu_123456/var/lib/aptitude
 
-        # zfs create rpool/ROOT/ubuntu_1234/var/lib/NetworkManager
+        # zfs create rpool/ROOT/ubuntu_123456/var/lib/dpkg
         -   type: zfs
-            id: disk1_rpool_system_ubuntu_1234_var_lib_networkmanager
+            id: disk1_rpool_system_ubuntu_123456_var_lib_dpkg
             pool: disk1_rpool
-            volume: /ROOT/ubuntu_1234/var/lib/NetworkManager
+            volume: /ROOT/ubuntu_123456/var/lib/dpkg
+
+        # zfs create rpool/ROOT/ubuntu_123456/var/lib/NetworkManager
+        -   type: zfs
+            id: disk1_rpool_system_ubuntu_123456_var_lib_networkmanager
+            pool: disk1_rpool
+            volume: /ROOT/ubuntu_123456/var/lib/NetworkManager
 
 
         ############################
@@ -252,7 +289,8 @@ storage:
                 mountpoint: /root
 
 sources:
-    - fsimage-layered:///cdrom/casper/minimal.standard.desktop-fr.squashfs
+    - fsimage-layered:///cdrom/casper/filesystem.squashfs
+    #- fsimage-layered:///cdrom/casper/minimal.standard.desktop-fr.squashfs
 
 #late_commands:
 #    # Snapshot before first reboot
